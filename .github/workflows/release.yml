@@ -1,0 +1,36 @@
+# Sestaví Windows instalátor (NSIS) a připne ho k GitHub Release.
+# Spouští se při pushnutí tagu v* (např. v0.1.0) nebo ručně z Actions.
+name: release
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
+          releaseName: "ai-hotkey ${{ github.ref_type == 'tag' && github.ref_name || 'dev build' }}"
+          releaseBody: |
+            Windows instalátor je níže (`ai-hotkey_*_x64-setup.exe`).
+            Postup instalace a požadavky (Ollama + model) viz README.
+          releaseDraft: ${{ github.ref_type != 'tag' }}
+          prerelease: false
