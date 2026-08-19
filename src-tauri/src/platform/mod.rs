@@ -126,6 +126,10 @@ pub fn fix_emoji_from_html(text: &str, html: &str) -> String {
     // delší názvy první, aby se nepřepsal kus delšího názvu kratším
     seen.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
     for (name, emoji) in seen {
+        // Teams dává v plain textu emoji na samostatný řádek → zalomení před názvem nahradit mezerou,
+        // emoji je v HTML inline. Zalomení za emoji nechat (může to být konec odstavce).
+        let re_name = regex::Regex::new(&format!(r"[ \t]*(?:\r?\n)+[ \t]*{}", regex::escape(&name))).unwrap();
+        out = re_name.replace_all(&out, format!(" {emoji}").as_str()).to_string();
         out = out.replace(&name, &emoji);
     }
     out
@@ -144,6 +148,13 @@ mod tests {
         let text = "Věděli jsem, že to nebude sslehké. Zubící se tvář se smějícíma se očima";
         let html = r#"<!--StartFragment-->Věděli jsem, že to nebude sslehké. <readonly contenteditable="false" title="Zubící se tvář se smějícíma se očima" itemid="grinningfacewithsmilingeyes" itemtype="http://schema.skype.com/Emoji" itemscope="😄" aria-label="Zubící se tvář se smějícíma se očima"><img alt="Zubící se tvář se smějícíma se očima"></readonly><!--EndFragment-->"#;
         assert_eq!(fix_emoji_from_html(text, html), "Věděli jsem, že to nebude sslehké. 😄");
+        // Teams: emoji v plain textu na novém řádku → přilepit za text
+        let text2 = "Věděli jsem, že to nebude sslehké.
+
+Zubící se tvář se smějícíma se očima
+Další věta.";
+        assert_eq!(fix_emoji_from_html(text2, html), "Věděli jsem, že to nebude sslehké. 😄
+Další věta.");
     }
 
     #[test]
