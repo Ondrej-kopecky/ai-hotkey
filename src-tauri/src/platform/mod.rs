@@ -63,6 +63,13 @@ pub fn grab_selection(p: &dyn Platform) -> Result<Option<String>> {
             }
         }
     }
+    // Některé appky (Teams) dávají do textu místo emoji jejich slovní název; v HTML verzi
+    // schránky je ale skutečný znak → opravit podle HTML.
+    if let Some(t) = grabbed.as_mut() {
+        if let Ok(html) = cb.get().html() {
+            *t = fix_emoji_from_html(t, &html);
+        }
+    }
 
     // Obnovit původní schránku (uživatel si ji nechce nechat přepsat).
     if let Some(b) = backup {
@@ -91,4 +98,56 @@ pub fn paste_text(p: &dyn Platform, target: Option<WindowHandle>, text: &str) ->
         let _ = cb.set_text(b);
     }
     Ok(())
+}
+
+/// Teams kopíruje emoji jako `<readonly … itemtype="http://schema.skype.com/Emoji" itemscope="😄"
+/// title="Zubící se tvář…">`, zatímco plain text obsahuje jen ten název. Tady se názvy v textu
+/// nahradí znakem z HTML. Jiné HTML se ignoruje.
+pub fn fix_emoji_from_html(text: &str, html: &str) -> String {
+    if !html.contains("schema.skype.com/Emoji") {
+        return text.to_string();
+    }
+    // element s atributy v libovolném pořadí: vytáhnout itemscope (znak) a title/alt (název)
+    let re_el = regex::Regex::new(r#"<readonly[^>]*schema\.skype\.com/Emoji[^>]*>"#).unwrap();
+    let re_scope = regex::Regex::new(r#"itemscope="([^"]+)""#).unwrap();
+    let re_title = regex::Regex::new(r#"(?:title|aria-label)="([^"]+)""#).unwrap();
+    let mut out = text.to_string();
+    let mut seen: Vec<(String, String)> = Vec::new();
+    for el in re_el.find_iter(html) {
+        let el = el.as_str();
+        let Some(emoji) = re_scope.captures(el).and_then(|c| c.get(1)).map(|m| m.as_str()) else { continue };
+        let Some(name) = re_title.captures(el).and_then(|c| c.get(1)).map(|m| m.as_str()) else { continue };
+        let name = html_unescape(name);
+        if emoji.is_empty() || name.is_empty() || seen.iter().any(|(n, _)| n == &name) {
+            continue;
+        }
+        seen.push((name, emoji.to_string()));
+    }
+    // delší názvy první, aby se nepřepsal kus delšího názvu kratším
+    seen.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
+    for (name, emoji) in seen {
+        out = out.replace(&name, &emoji);
+    }
+    out
+}
+
+fn html_unescape(s: &str) -> String {
+    s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::fix_emoji_from_html;
+
+    #[test]
+    fn teams_emoji_name_is_replaced() {
+        let text = "Věděli jsem, že to nebude sslehké. Zubící se tvář se smějícíma se očima";
+        let html = r#"<!--StartFragment-->Věděli jsem, že to nebude sslehké. <readonly contenteditable="false" title="Zubící se tvář se smějícíma se očima" itemid="grinningfacewithsmilingeyes" itemtype="http://schema.skype.com/Emoji" itemscope="😄" aria-label="Zubící se tvář se smějícíma se očima"><img alt="Zubící se tvář se smějícíma se očima"></readonly><!--EndFragment-->"#;
+        assert_eq!(fix_emoji_from_html(text, html), "Věděli jsem, že to nebude sslehké. 😄");
+    }
+
+    #[test]
+    fn other_html_untouched() {
+        assert_eq!(fix_emoji_from_html("ahoj", "<b>ahoj</b>"), "ahoj");
+    }
 }

@@ -33,6 +33,7 @@ dirs = "6"
 tauri-plugin-autostart = "2.5.1"
 axum = "0.8"
 keyring = "4"
+regex = "1.13.1"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = ["Win32_UI_WindowsAndMessaging", "Win32_Foundation", "Win32_UI_Input_KeyboardAndMouse"] }
