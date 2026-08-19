@@ -6,7 +6,7 @@ export interface Config {
   hotkey: string;
   provider: "ollama" | "anthropic";
   ollama: { url: string; model: string };
-  anthropic: { api_key: string; model: string };
+  anthropic: { api_key: string; api_key_stored: boolean; model: string };
   actions: Action[];
   target_language: string;
   output_language: string;

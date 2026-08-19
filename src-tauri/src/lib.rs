@@ -9,6 +9,7 @@ mod bridge;
 mod config;
 mod llm;
 mod platform;
+mod secrets;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -71,12 +72,30 @@ fn get_config(state: tauri::State<'_, AppState>) -> Config {
 }
 
 #[tauri::command]
-fn save_config(app: AppHandle, state: tauri::State<'_, AppState>, config: Config) -> Result<(), String> {
+fn save_config(app: AppHandle, state: tauri::State<'_, AppState>, mut config: Config) -> Result<(), String> {
     let old = state.config.lock().unwrap().clone();
+    // API klíč: frontend pošle neprázdný jen když uživatel zadal nový → do trezoru;
+    // prázdný = ponechat stávající (z paměti). Do config.json se klíč nikdy nezapíše.
+    if !config.anthropic.api_key.is_empty() {
+        secrets::set(secrets::ANTHROPIC_KEY, &config.anthropic.api_key)?;
+    } else {
+        config.anthropic.api_key = old.anthropic.api_key.clone();
+    }
+    config.anthropic.api_key_stored = !config.anthropic.api_key.is_empty();
     config.save().map_err(|e| e.to_string())?;
     register_hotkeys(&app, Some(&old), &config).map_err(|e| e.to_string())?;
     *state.config.lock().unwrap() = config;
     Ok(())
+}
+
+/// Smaže Anthropic API klíč z trezoru OS.
+#[tauri::command]
+fn delete_api_key(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    secrets::delete(secrets::ANTHROPIC_KEY)?;
+    let mut cfg = state.config.lock().unwrap();
+    cfg.anthropic.api_key.clear();
+    cfg.anthropic.api_key_stored = false;
+    cfg.save().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -104,8 +123,10 @@ async fn list_ollama_models(url: String) -> Result<Vec<String>, String> {
 
 /// Vyzkoušet prompt na vzorovém textu (editor akce). Vrací celý výsledek najednou.
 #[tauri::command]
-async fn test_prompt(state: tauri::State<'_, AppState>, config: Config, prompt: String, text: String) -> Result<String, String> {
-    let _ = state;
+async fn test_prompt(state: tauri::State<'_, AppState>, mut config: Config, prompt: String, text: String) -> Result<String, String> {
+    if config.anthropic.api_key.is_empty() {
+        config.anthropic.api_key = state.config.lock().unwrap().anthropic.api_key.clone();
+    }
     let system = prompt.replace("{lang}", &config.target_language).replace("{out}", &config.output_language);
     let provider = llm::from_config(&config);
     let sink = |_: &str| {};
@@ -517,6 +538,7 @@ pub fn run() {
             close_popup,
             resize_popup,
             get_autostart,
+            delete_api_key,
             default_config,
             list_ollama_models,
             list_models,

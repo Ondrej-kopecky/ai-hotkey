@@ -58,8 +58,9 @@ Tip: pravým tlačítkem na ikonu → **Nastavení** → zapni *Spouštět po st
   písmeno, vlastní globální zkratka, režim *Náhled* / *Nahradit výběr*, pevný model, prompt
   s proměnnými `{out}` (jazyk odpovědí) a `{lang}` (jazyk překladu), tlačítko *Vyzkoušet*.
 
-Config je JSON v `%APPDATA%\ai-hotkey\config.json`. API klíč se ukládá tam (nešifrovaně) – sdílený
-počítač zvaž.
+Config je JSON v `%APPDATA%\ai-hotkey\config.json`. **API klíč se do něj neukládá** – je v šifrovaném
+trezoru systému (Windows Správce pověření / macOS Keychain / Linux Secret Service), vázaný na tvůj
+uživatelský účet.
 
 ## Brave Leo (bonus)
 

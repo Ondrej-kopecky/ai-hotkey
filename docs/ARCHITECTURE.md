@@ -37,6 +37,7 @@ předchozí.
 | `src-tauri/src/lib.rs` | Bootstrap Tauri, tray, hotkey, okna, Tauri commandy, `AppState` |
 | `src-tauri/src/config.rs` | `Config` (JSON v config dir), load/save, defaulty |
 | `src-tauri/src/bridge.rs` | **Leo bridge** – axum proxy 127.0.0.1:11435 → Ollama, do `/v1/chat/completions` doplní `reasoning_effort: "none"` (vypne thinking Gemma 4 pro Brave Leo a jiné OpenAI klienty) |
+| `src-tauri/src/secrets.rs` | API klíče v trezoru OS (`keyring`: Credential Manager / Keychain / Secret Service); config.json klíč neobsahuje, `api_key` se neserializuje, migrace ze starého configu při startu |
 | `src-tauri/src/actions.rs` | `Action` + 5 vestavěných akcí, render `{lang}`/`{out}` |
 | `src-tauri/src/llm/mod.rs` | trait `LlmProvider { complete(system, user, sink), health() }` |
 | `src-tauri/src/llm/ollama.rs` | `/api/chat` stream=true (NDJSON) |
@@ -66,6 +67,7 @@ předchozí.
 | `close_popup` | – | – |
 | `open_settings` | – | – (otevře/ukáže okno `settings`) |
 | `resize_popup` | `{width, height}` | – (logické px; drží střed, clamp na monitor) |
+| `delete_api_key` | – | – (smaže klíč z trezoru) |
 | `get_autostart` / `set_autostart` | – / `{enabled}` | bool / – (tauri-plugin-autostart, HKCU Run) |
 | `default_config` | – | `Config` (výchozí hodnoty) |
 | `list_ollama_models` | `{url}` | `string[]` (GET /api/tags) |

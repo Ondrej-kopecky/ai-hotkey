@@ -141,6 +141,11 @@ kbd { background: rgba(255,255,255,.12); border-radius: 4px; padding: 1px 5px; f
 .st .tabs { display: inline-flex; gap: 2px; background: rgba(255,255,255,.06); border-radius: 9px; padding: 3px; margin-bottom: 14px; }
 .st .tabs button { height: 32px; background: transparent; color: var(--muted); }
 .st .tabs button.on { background: rgba(255,255,255,.14); color: var(--fg); }
+.st .keyrow { background: #1f1f1f; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 4px 4px 4px 12px; min-height: 40px; gap: 10px; flex-wrap: nowrap; }
+.st .keyrow .keymask { letter-spacing: 1px; white-space: nowrap; }
+.st .keyrow .keyinfo { white-space: nowrap; }
+.st .keyrow .spacer { flex: 1; }
+.st .keyrow button { height: 32px; flex: none; }
 .st .dot { font-size: 12.5px; color: var(--muted); }
 .st .dot.ok { color: #7bd88f; } .st .dot.err { color: var(--danger); }
 /* toggle */
@@ -168,13 +173,15 @@ kbd { background: rgba(255,255,255,.12); border-radius: 4px; padding: 1px 5px; f
 .st-foot .status { font-size: 12.5px; color: var(--muted); }
 /* dialog */
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 10; }
-.modal { width: min(640px, calc(100vw - 40px)); max-height: calc(100vh - 40px); background: #242424; border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal { width: min(680px, calc(100vw - 40px)); max-height: calc(100vh - 40px); background: #242424; border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 .mhead { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .mhead h3 { margin: 0; font-size: 15px; font-weight: 600; }
 .mbody { padding: 16px 18px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
 .mfoot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line); }
 .icons { display: flex; gap: 6px; flex-wrap: wrap; }
 .ipick { width: 40px; height: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.ipick .ic { width: 20px; height: 20px; }
+.st .fl.row { gap: 6px; align-items: center; }
 .ipick.on { background: rgba(79,140,255,.35); outline: 1px solid var(--accent); }
 .seg2 { display: inline-flex; gap: 2px; background: rgba(255,255,255,.06); border-radius: 9px; padding: 3px; }
 .seg2 button { height: 32px; background: transparent; color: var(--muted); }

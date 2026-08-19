@@ -51,7 +51,12 @@ pub struct OllamaConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AnthropicConfig {
+    /// Klíč žije jen v paměti (načtený z trezoru OS) – NIKDY se neserializuje do config.json
+    /// ani neposílá do frontendu. Frontend ho naopak může poslat (nový klíč k uložení).
+    #[serde(skip_serializing)]
     pub api_key: String,
+    /// Informativní příznak pro UI: klíč je uložený v trezoru.
+    pub api_key_stored: bool,
     pub model: String,
 }
 
@@ -63,7 +68,7 @@ impl Default for OllamaConfig {
 
 impl Default for AnthropicConfig {
     fn default() -> Self {
-        Self { api_key: String::new(), model: "claude-sonnet-5".into() }
+        Self { api_key: String::new(), api_key_stored: false, model: "claude-sonnet-5".into() }
     }
 }
 
@@ -93,7 +98,7 @@ impl Config {
 
     pub fn load() -> Self {
         let path = Self::path();
-        match std::fs::read_to_string(&path) {
+        let mut cfg = match std::fs::read_to_string(&path) {
             Ok(s) => match serde_json::from_str::<Config>(&s) {
                 Ok(c) => c,
                 Err(e) => {
@@ -106,7 +111,22 @@ impl Config {
                 let _ = c.save();
                 c
             }
+        };
+        // Migrace: klíč v plain textu ve starém config.json → přesunout do trezoru a z JSONu smazat.
+        if !cfg.anthropic.api_key.is_empty() {
+            match crate::secrets::set(crate::secrets::ANTHROPIC_KEY, &cfg.anthropic.api_key) {
+                Ok(()) => {
+                    log::info!("Anthropic API klíč přesunut z config.json do trezoru OS");
+                    cfg.anthropic.api_key_stored = true;
+                    let _ = cfg.save(); // api_key se neserializuje → z JSONu zmizí
+                }
+                Err(e) => log::warn!("migrace klíče do trezoru selhala: {e}"),
+            }
+        } else {
+            cfg.anthropic.api_key = crate::secrets::get(crate::secrets::ANTHROPIC_KEY).unwrap_or_default();
+            cfg.anthropic.api_key_stored = !cfg.anthropic.api_key.is_empty();
         }
+        cfg
     }
 
     pub fn save(&self) -> anyhow::Result<()> {

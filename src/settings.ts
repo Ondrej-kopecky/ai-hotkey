@@ -9,6 +9,7 @@ const NAV: { id: Section; label: string; icon: string }[] = [
   { id: "actions", label: "Akce", icon: '<circle cx="10" cy="10" r="7"/><path d="M10 3v14M3 10h14"/>' },
   { id: "about", label: "O aplikaci", icon: '<circle cx="10" cy="10" r="7.5"/><path d="M10 9v5M10 6.5v.5"/>' },
 ];
+const ACTION_ICONS = ["check", "translate", "list", "pen", "bulb", "spark"];
 const SAMPLE = "Ahoj, tohle je vjeta s chybama, kterou bysme mjeli opravit, aby vypadala profesionálně.";
 const ico = (n: string, cls = "") => `<svg class="ic ${cls}" viewBox="0 0 20 20" width="18" height="18">${ICONS[n] ?? ICONS.spark}</svg>`;
 const deepClone = <T,>(o: T): T => JSON.parse(JSON.stringify(o));
@@ -24,6 +25,7 @@ export async function settings(root: HTMLElement) {
   let ollamaState: "unknown" | "ok" | "err" = "unknown";
   let ollamaMsg = "";
   let showKey = false;
+  let editKey = false;
   let dragFrom = -1;
   let models: ModelInfo[] = [];
   invoke<ModelInfo[]>("list_models").then((m) => { models = m; }).catch(() => {});
@@ -59,8 +61,8 @@ export async function settings(root: HTMLElement) {
             <button class="primary" id="save" ${dirty() ? "" : "disabled"}>Uložit změny</button>
           </footer>
         </main>
-      </div>
-      <div id="dialog"></div>`;
+        <div id="dialog"></div>
+      </div>`;
     bind();
   }
 
@@ -112,13 +114,23 @@ export async function settings(root: HTMLElement) {
         ${field("Port", `<input id="bridge_port" type="number" value="${cfg.leo_bridge.port}" min="1024" max="65535" style="max-width:140px">`)}
       </section>` : `
       <section class="card">
-        <label class="f"><span class="fl">API klíč</span>
+        <div class="f"><span class="fl">API klíč</span>
+          ${cfg.anthropic.api_key_stored && !editKey ? `
+          <div class="row between keyrow">
+            <span class="keymask">••••••••••••</span>
+            <span class="fh keyinfo">uloženo v trezoru systému</span>
+            <span class="spacer"></span>
+            <button type="button" id="key_change">Změnit</button>
+            <button type="button" id="key_delete" class="ghost">Smazat</button>
+          </div>
+          <span class="fh">Windows Správce pověření / macOS Keychain / Linux Secret Service – šifrováno na tvůj účet, v config.json není.</span>` : `
           <div class="row">
             <input id="anth_key" type="${showKey ? "text" : "password"}" value="${esc(cfg.anthropic.api_key)}" placeholder="sk-ant-…" autocomplete="off">
-            <button class="icon" id="eye" title="${showKey ? "Skrýt" : "Zobrazit"}">${showKey ? "🙈" : "👁"}</button>
+            <button type="button" class="icon" id="eye" title="${showKey ? "Skrýt" : "Zobrazit"}">${showKey ? "🙈" : "👁"}</button>
+            ${cfg.anthropic.api_key_stored ? `<button type="button" id="key_cancel" class="ghost">Zrušit</button>` : ""}
           </div>
-          <span class="fh">Klíč se ukládá lokálně do config.json (uložení do Windows Credential Manageru je v plánu).</span>
-        </label>
+          <span class="fh">Klíč se uloží do šifrovaného trezoru systému, ne do config.json. Po zadání klikni na Uložit změny.</span>`}
+        </div>
         ${field("Model", `<input id="anth_model" value="${esc(cfg.anthropic.model)}" list="anth_models" placeholder="claude-sonnet-5"><datalist id="anth_models"><option value="claude-sonnet-5"><option value="claude-opus-5"><option value="claude-haiku-4-5"></datalist>`, "Doporučeno claude-sonnet-5. Klíč vlož a ulož – pak se Claude modely objeví ve výběru v panelu i u akcí.")}
         <div class="row between"><span class="fh">Data se posílají do cloudu Anthropic.</span><button id="check">Otestovat připojení</button></div>
       </section>`}`,
@@ -146,7 +158,7 @@ export async function settings(root: HTMLElement) {
       <section class="card about">
         <img src="/icon.png" width="56" height="56" alt="">
         <div>
-          <div class="aname">ai-hotkey <span class="fh">0.1.0</span></div>
+          <div class="aname">ai-hotkey <span class="fh">0.1.1</span></div>
           <div class="fh">Označ text kdekoli, stiskni zkratku, nech AI pracovat. Běží lokálně (Ollama) nebo přes Anthropic API.</div>
           <div class="fh" style="margin-top:8px">Config: <code>%APPDATA%\\ai-hotkey\\config.json</code></div>
         </div>
@@ -184,8 +196,16 @@ export async function settings(root: HTMLElement) {
     $("#anth_key")?.addEventListener("input", (e) => cfg.anthropic.api_key = (e.target as HTMLInputElement).value.trim());
     $("#anth_model")?.addEventListener("input", (e) => cfg.anthropic.model = (e.target as HTMLInputElement).value.trim());
     $("#eye")?.addEventListener("click", () => { showKey = !showKey; render(); });
+    $("#key_change")?.addEventListener("click", () => { editKey = true; render(); });
+    $("#key_cancel")?.addEventListener("click", () => { editKey = false; cfg.anthropic.api_key = ""; render(); });
+    $("#key_delete")?.addEventListener("click", async () => {
+      if (!confirm("Smazat Anthropic API klíč z trezoru systému?")) return;
+      try { await invoke("delete_api_key"); cfg.anthropic.api_key = ""; cfg.anthropic.api_key_stored = false; saved = deepClone(cfg); status = "Klíč smazán"; }
+      catch (e) { status = "Chyba: " + e; }
+      render();
+    });
     $("#check")?.addEventListener("click", async () => {
-      try { await invoke("save_config", { config: cfg }); saved = deepClone(cfg); status = await invoke<string>("check_provider"); }
+      try { await invoke("save_config", { config: cfg }); cfg = await invoke<Config>("get_config"); saved = deepClone(cfg); editKey = false; status = await invoke<string>("check_provider"); }
       catch (e) { status = "Chyba: " + e; }
       render();
     });
@@ -209,7 +229,7 @@ export async function settings(root: HTMLElement) {
   }
 
   async function save() {
-    try { await invoke("save_config", { config: cfg }); saved = deepClone(cfg); status = "Uloženo"; }
+    try { await invoke("save_config", { config: cfg }); cfg = await invoke<Config>("get_config"); saved = deepClone(cfg); editKey = false; status = "Uloženo"; }
     catch (e) { status = "Chyba: " + e; }
     render();
   }
@@ -240,22 +260,24 @@ export async function settings(root: HTMLElement) {
             <div class="mhead"><h3>${index >= 0 ? "Upravit akci" : "Nová akce"}</h3><button class="icon" id="m-close">×</button></div>
             <div class="mbody">
               <div class="grid2">
-                ${field("Název", `<input id="m-name" value="${esc(a.name)}">`)}
-                ${field("Písmeno v kolečku", `<input id="m-key" value="${esc(a.key)}" maxlength="1" placeholder="G">`)}
+                ${field("Název", `<input id="m-name" value="${esc(a.name)}" placeholder="Např. Přeložit do němčiny">`)}
+                ${field("Písmeno v kolečku", `<input id="m-key" value="${esc(a.key)}" maxlength="1" placeholder="např. N">`, "Jedna klávesa pro rychlý výběr.")}
               </div>
-              ${field("Popis", `<input id="m-desc" value="${esc(a.description)}" placeholder="Krátce, co akce dělá">`)}
-              <label class="f"><span class="fl">Ikona</span>
-                <div class="icons">${Object.keys(ICONS).map((n) => `<button class="ipick ${a.icon === n ? "on" : ""}" data-ic="${n}" title="${n}">${ico(n)}</button>`).join("")}</div>
-              </label>
+              ${field("Popis", `<input id="m-desc" value="${esc(a.description)}" placeholder="Krátce, co akce dělá (zobrazí se na kartě)">`)}
               <div class="grid2">
-                ${field("Globální zkratka (volitelně)", `<input id="m-hotkey" value="${esc(a.hotkey)}" placeholder="stiskni kombinaci…" data-capture>`, "Spustí akci rovnou bez kolečka. Backspace smaže.")}
-                <label class="f"><span class="fl">Režim výsledku</span>
-                  <div class="seg2"><button class="${a.mode === "show" ? "on" : ""}" data-m="show">Náhled</button><button class="${a.mode === "replace" ? "on" : ""}" data-m="replace">Nahradit výběr</button></div>
-                  <span class="fh">${a.mode === "replace" ? "Nabídne Porovnání a tlačítko Nahradit výběr." : "Zobrazí výsledek ke zkopírování."}</span>
-                </label>
+                <div class="f"><span class="fl">Ikona</span>
+                  <div class="icons">${ACTION_ICONS.map((n) => `<button type="button" class="ipick ${a.icon === n ? "on" : ""}" data-ic="${n}" title="${n}">${ico(n)}</button>`).join("")}</div>
+                </div>
+                <div class="f"><span class="fl">Režim výsledku</span>
+                  <div class="seg2"><button type="button" class="${a.mode === "show" ? "on" : ""}" data-m="show">Náhled</button><button type="button" class="${a.mode === "replace" ? "on" : ""}" data-m="replace">Nahradit výběr</button></div>
+                  <span class="fh">${a.mode === "replace" ? "Po potvrzení nahradí označený text; nabídne Porovnání změn." : "Zobrazí výsledek ke zkopírování (překlad, shrnutí…)."}</span>
+                </div>
               </div>
-              ${field("Model pro tuto akci", `<select id="m-model"><option value="">Výchozí (podle Nastavení / volby v panelu)</option>${models.map((m) => `<option value="${esc(m.id)}" ${a.model === m.id ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select>`, "Např. překlad přes Claude Sonnet 5, gramatiku lokálně přes Gemmu.")}
-              <label class="f"><span class="fl">Prompt <span class="fh">– proměnné: <button class="chip" data-var="{out}">{out}</button> <button class="chip" data-var="{lang}">{lang}</button></span></span>
+              <div class="grid2">
+                ${field("Globální zkratka", `<input id="m-hotkey" value="${esc(a.hotkey)}" placeholder="klikni a stiskni kombinaci…" data-capture>`, "Volitelné – spustí akci rovnou bez kolečka. Backspace smaže.")}
+                ${field("Model", `<select id="m-model"><option value="">Výchozí</option>${models.map((m) => `<option value="${esc(m.id)}" ${a.model === m.id ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</select>`, "Výchozí = model z Nastavení / volby v panelu.")}
+              </div>
+              <label class="f"><span class="fl row">Prompt <span class="fh">· vložit proměnnou:</span> <button type="button" class="chip" data-var="{out}">{out}</button> <button type="button" class="chip" data-var="{lang}">{lang}</button></span>
                 <textarea id="m-prompt" rows="6" placeholder="Instrukce pro model. Označený text jde jako zpráva uživatele.">${esc(a.prompt)}</textarea>
               </label>
               <div class="row between">
