@@ -230,16 +230,26 @@ function popup() {
   function fitPanel() {
     const panel = app.querySelector<HTMLElement>(".panel");
     if (!panel) return;
+    const body = panel.querySelector<HTMLElement>(".body");
+    if (!body) return;
     const maxH = Math.floor(screen.availHeight * 0.6);
-    const head = panel.querySelector<HTMLElement>(".head")!.offsetHeight;
-    const foot = panel.querySelector<HTMLElement>(".foot")!.offsetHeight;
-    const content = panel.querySelector<HTMLElement>(".result, .error");
-    const bodyH = (content?.scrollHeight ?? 40) + 40; // + padding
-    const h = Math.min(maxH, Math.max(160, head + foot + bodyH + 2));
-    if (Math.abs(h - lastH) >= 6) {
+    // Změřit skutečnou potřebnou výšku: panel dočasně nechat vyrůst podle obsahu.
+    const ph = panel.style.height, bo = body.style.overflow, bf = body.style.flex;
+    panel.style.height = "auto"; body.style.overflow = "visible"; body.style.flex = "none";
+    const need = panel.offsetHeight + 2;
+    panel.style.height = ph; body.style.overflow = bo; body.style.flex = bf;
+    const h = Math.min(maxH, Math.max(160, need));
+    if (Math.abs(h - lastH) >= 4) {
       lastH = h;
       invoke("resize_popup", { width: Math.min(PANEL_W, screen.availWidth - 32), height: h });
     }
+  }
+  // Po dokončení ještě jednou přeměřit, až se okno skutečně přeškáluje (šířka 560 → jiné zalomení).
+  function fitPanelSettled() {
+    fitPanel();
+    requestAnimationFrame(() => fitPanel());
+    window.setTimeout(fitPanel, 180);
+    window.setTimeout(fitPanel, 450);
   }
 
   function backToWheel() {
@@ -267,6 +277,7 @@ function popup() {
     result = ""; error = null; running = true; view = "result"; copied = false; lastH = 0;
     usedModel = modelOverride || action.model || defaultModel;
     renderResult();
+    fitPanelSettled();
     try {
       seq = await invoke<number>("run_action", { actionId: action.id, text, model: modelOverride ?? null });
     } catch (e) {
@@ -300,6 +311,7 @@ function popup() {
       result = result.trim();
       if (autoReplace && action?.mode === "replace" && result) { invoke("paste_result", { text: result }); return; }
       renderResult();
+      fitPanelSettled();
       return;
     }
     result += p.token;

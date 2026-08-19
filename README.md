@@ -10,6 +10,14 @@ libovolné akce přepnout na Claude (Anthropic API), když chceš lepší kvalit
 - Windows 10/11 (hotové) · Linux (v plánu, viz [docs/LINUX-PORT.md](docs/LINUX-PORT.md))
 - Inspirace: wheelly.ai
 
+<p align="center">
+  <img src="docs/img/wheel.png" width="300" alt="Kruhové menu akcí">
+</p>
+
+<p align="center">
+  <img src="docs/img/panel-diff.png" width="720" alt="Panel s výsledkem – porovnání změn u opravy gramatiky">
+</p>
+
 ## Instalace (uživatel)
 
 1. **Nainstaluj Ollamu** – [ollama.com/download](https://ollama.com/download) (Windows installer,
@@ -50,6 +58,10 @@ Tip: pravým tlačítkem na ikonu → **Nastavení** → zapni *Spouštět po st
 | výběr modelu vpravo nahoře | přepočítat jiným modelem (a zapamatovat jako výchozí) |
 
 ## Nastavení (ikona → Nastavení)
+
+<p align="center">
+  <img src="docs/img/settings-actions.png" width="720" alt="Nastavení – akce v kruhovém menu">
+</p>
 
 - **Obecné** – zkratka pro menu, jazyk odpovědí, výchozí jazyk překladu, autostart, okamžité nahrazování.
 - **AI poskytovatel** – Ollama (adresa, model ze seznamu, test připojení) nebo Anthropic (API klíč,

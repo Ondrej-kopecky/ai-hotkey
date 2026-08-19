@@ -1,6 +1,6 @@
 [package]
 name = "ai-hotkey"
-version = "0.1.1"
+version = "0.1.2"
 description = "AI hotkey – označ text kdekoli, zmáčkni zkratku, nech AI pracovat"
 authors = ["Ongy"]
 license = "MIT"

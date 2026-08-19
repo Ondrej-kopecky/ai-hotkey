@@ -158,7 +158,7 @@ export async function settings(root: HTMLElement) {
       <section class="card about">
         <img src="/icon.png" width="56" height="56" alt="">
         <div>
-          <div class="aname">ai-hotkey <span class="fh">0.1.1</span></div>
+          <div class="aname">ai-hotkey <span class="fh">0.1.2</span></div>
           <div class="fh">Označ text kdekoli, stiskni zkratku, nech AI pracovat. Běží lokálně (Ollama) nebo přes Anthropic API.</div>
           <div class="fh" style="margin-top:8px">Config: <code>%APPDATA%\\ai-hotkey\\config.json</code></div>
         </div>
